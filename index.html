@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Ludo</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;font-family:system-ui,sans-serif;color:#fff;background:radial-gradient(circle at 50% 0,#5b2a9a,#1b1038 70%)}
+.screen{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:env(safe-area-inset-top) 12px env(safe-area-inset-bottom);overflow:auto}
+.hidden{display:none!important}
+h1{font-size:44px;margin:0 0 14px;letter-spacing:2px;text-shadow:0 4px 0 #0005}
+.card{background:#ffffff14;border:1px solid #fff3;border-radius:18px;padding:14px;margin:6px 0;width:min(380px,100%)}
+.card h3{margin:0 0 8px}.row{display:flex;gap:8px;align-items:center;margin:6px 0}
+button,select,input{font:inherit;border-radius:12px;border:0;padding:11px 14px}
+button{background:linear-gradient(#ffb300,#ff8f00);color:#2b1700;font-weight:700;cursor:pointer;box-shadow:0 4px 0 #a05a00}
+button:active{transform:translateY(3px);box-shadow:0 1px 0 #a05a00}button.alt{background:#fff2;color:#fff;box-shadow:none}
+select,input{background:#fff;color:#222;flex:1;min-width:0}
+#game{justify-content:space-between;padding-top:calc(env(safe-area-inset-top) + 6px)}
+#top{display:flex;width:100%;max-width:640px;align-items:center;gap:8px}
+#turn{flex:1;font-weight:700;display:flex;align-items:center;gap:8px}
+#dot{width:18px;height:18px;border-radius:50%;box-shadow:0 0 10px currentColor}
+#top button{padding:8px 12px}
+canvas{border-radius:14px;box-shadow:0 10px 30px #0008;touch-action:manipulation}
+#bar{display:flex;align-items:center;gap:16px;min-height:96px}
+#dice{width:72px;height:72px;border-radius:16px;display:grid;grid-template:repeat(3,1fr)/repeat(3,1fr);padding:10px;gap:2px;cursor:pointer;box-shadow:0 5px 0 #0006;background:#fff}
+#dice i{border-radius:50%;margin:auto;width:13px;height:13px}
+#dice i.on{background:#222;box-shadow:inset 0 -2px 0 #000a}
+#dice.ready{animation:pulse 1s infinite}#dice.roll{animation:shake .12s infinite}
+@keyframes pulse{50%{transform:scale(1.12)}}@keyframes shake{25%{transform:rotate(-14deg) translateY(-6px)}75%{transform:rotate(14deg) translateY(-6px)}}
+#hint{font-size:14px;opacity:.85;max-width:180px}
+#toast{position:fixed;top:18%;left:50%;transform:translateX(-50%);background:#000b;padding:10px 18px;border-radius:20px;opacity:0;transition:.3s;pointer-events:none}
+#toast.show{opacity:1}
+#over{position:fixed;inset:0;background:#000c;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;z-index:9}
+.plist div{padding:8px 12px;margin:4px 0;border-radius:10px;background:#fff2;display:flex;gap:8px;align-items:center}
+.credit{margin-top:6px;padding:5px 16px;border-radius:999px;font-size:12px;letter-spacing:.6px;color:#ffe9a8;background:linear-gradient(90deg,#ffffff10,#ffffff26,#ffffff10);border:1px solid #ffffff2e;text-shadow:0 1px 0 #0006;white-space:nowrap}
+.credit b{color:#ffb300;font-weight:800}
+.pip{width:14px;height:14px;border-radius:50%;display:inline-block}
+</style></head><body>
+
+<div id="menu" class="screen">
+  <h1>🎲 LUDO</h1>
+  <div class="card"><h3>Pass N Play</h3>
+    <div class="row"><select id="pnpN"><option>2</option><option>3</option><option selected>4</option></select><button id="pnp">Play</button></div></div>
+  <div class="card"><h3>Vs Bot</h3>
+    <div class="row"><select id="botN"><option value="1">1 opponent</option><option value="2">2 opponents</option><option value="3" selected>3 opponents</option></select>
+    <select id="botL"><option>easy</option><option selected>medium</option><option>hard</option></select></div>
+    <button id="bot" style="width:100%">Play</button></div>
+  <div class="card"><h3>Online / Friends</h3>
+    <div class="row"><input id="name" placeholder="Your name" maxlength="12"></div>
+    <div class="row"><button id="create">Create room</button><input id="code" placeholder="CODE" maxlength="5" style="text-transform:uppercase"><button id="join" class="alt">Join</button></div>
+    <div id="menuErr" style="color:#ff8a80;font-size:14px"></div></div>
+  <div class="credit">🎲 Created By <b>Nizamul Hasan Ahad</b></div>
+</div>
+
+<div id="lobby" class="screen hidden">
+  <h1 id="lobCode" style="font-size:38px">-----</h1><div style="opacity:.8;margin-bottom:10px">Share this code with friends</div>
+  <div class="card plist" id="lobPlayers"></div>
+  <div class="row" id="hostBtns"><button id="addBot" class="alt">+ Bot</button><button id="start">Start game</button></div>
+  <button id="lobBack" class="alt">Leave</button>
+</div>
+
+<div id="game" class="screen hidden">
+  <div id="top"><div id="turn"><span id="dot"></span><span id="turnTxt"></span></div><span id="timer"></span>
+    <button id="mute" class="alt">🔊</button><button id="quit" class="alt">✕</button></div>
+  <canvas id="cv"></canvas>
+  <div id="bar"><div id="dice"></div><div id="hint"></div></div>
+  <div class="credit">🎲 Created By <b>Nizamul Hasan Ahad</b></div>
+</div>
+<div id="toast"></div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="/shared/engine.js"></script><script src="/shared/bot.js"></script>
+<script src="js/sound.js"></script><script src="js/game.js"></script>
+</body></html>
